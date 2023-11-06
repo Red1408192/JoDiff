@@ -1,2 +1,6 @@
 /bin
 /obj
+/JoDiff.Models/bin
+/JoDiff.Models/obj
+/JoDiff.UnitTests/bin
+/JoDiff.UnitTests/obj
