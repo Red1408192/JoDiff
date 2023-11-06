@@ -1,0 +1,164 @@
+revive_olympic_games_decision = {
+	is_shown = {
+		exists = c:GRE
+		this = c:GRE
+	}
+
+	possible = {
+		this = c:GRE
+		has_technology_researched = organized_sports
+		hidden_trigger = {
+			NOT = { has_variable = revive_olympics_decision_taken }
+		}
+	}
+	
+	when_taken = {
+		set_variable = {
+			name = revive_olympics_decision_taken
+			value = yes
+		}
+		add_modifier = {
+			name = modifier_olympic_games
+		}
+		add_modifier = {
+			name = modifier_olympic_games_bureaucracy
+			months = short_modifier_time
+		}
+	}
+
+	ai_chance = {
+		base = 0
+		modifier = {
+			trigger = { bureaucracy > 0 }
+			add = 5
+		}
+		modifier = {
+			OR = {
+				is_diplomatic_play_committed_participant = yes
+				is_at_war = yes
+			}
+			add = -1000
+		}		
+	}
+}
+
+remove_command_from_ruler = {
+	icon = "gfx/interface/character_panel/grant_command_not.dds"
+	clicksound = "event:/SFX/UI/Military/command_remove"
+
+	potential = {
+		is_ruler = yes
+		has_role = general
+		owner = scope:actor
+	}
+
+	possible = {
+		is_mobilized = no
+	}
+
+	effect = {
+		remove_character_role = general
+	}
+
+	ai_chance = {
+		value = 0
+		if = {
+			limit = {
+				owner = {	
+					any_scope_general = {
+						exists = yes
+						NOT = {
+							this = owner.ruler
+						}
+					}
+				}
+			} 
+			add = 25
+		}	
+		if = {
+			limit = {
+				NOT = {
+					owner = {
+						is_at_war = yes
+					}
+				}
+			}
+			add = 25
+		}
+		if = {
+			limit = {
+				is_interest_group_type = ig_armed_forces
+			}
+			add = -50
+		}			
+	}
+}
+
+grant_leadership_to_agitator = {
+	icon = "gfx/interface/character_panel/grant_command_not.dds"
+	clicksound = "event:/SFX/DLC/1.3_ip1/UI/agitator_promote"
+
+	potential = {
+		has_dlc_feature = agitators
+		has_role = agitator
+		owner = scope:actor
+	}
+
+	possible = {
+		interest_group = {
+			is_in_government = yes
+		}
+		character_is_discriminated = no	
+		OR = {
+			is_female = no
+			scope:actor = { has_law = law_type:law_womens_suffrage }
+		}
+	}
+
+	effect = {
+		remove_character_role = agitator
+		add_character_role = politician
+		custom_tooltip = {
+			text = make_agitator_ig_leader_tt
+			set_as_interest_group_leader = yes
+		}
+	}
+
+	cooldown = { months = normal_modifier_time }
+
+	ai_chance = {
+		value = -50
+		if = {
+			limit = {
+				popularity > interest_group.leader.popularity
+			}
+			add = 25
+		}
+		if = {
+			limit = {
+				interest_group.leader.popularity <= -50
+			}
+			add = 50
+		}
+		if = {
+			limit = {
+				interest_group.leader.popularity >= 50
+			}
+			add = -50
+		}
+		if = {
+			limit = {
+				interest_group = {
+					ig_approval <= 0
+				}
+			}
+			add = 25
+		}
+		if = {
+			limit = {
+				this.ideology = owner.ruler.ideology
+			}
+			add = 50
+		}
+	}
+}

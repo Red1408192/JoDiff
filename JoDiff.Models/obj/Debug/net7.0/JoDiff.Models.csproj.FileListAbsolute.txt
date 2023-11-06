@@ -1,0 +1,11 @@
+E:\Documents\JoDiff\JoDiff.Models\bin\Debug\net7.0\JoDiff.Models.deps.json
+E:\Documents\JoDiff\JoDiff.Models\bin\Debug\net7.0\JoDiff.Models.dll
+E:\Documents\JoDiff\JoDiff.Models\bin\Debug\net7.0\JoDiff.Models.pdb
+E:\Documents\JoDiff\JoDiff.Models\obj\Debug\net7.0\JoDiff.Models.GeneratedMSBuildEditorConfig.editorconfig
+E:\Documents\JoDiff\JoDiff.Models\obj\Debug\net7.0\JoDiff.Models.AssemblyInfoInputs.cache
+E:\Documents\JoDiff\JoDiff.Models\obj\Debug\net7.0\JoDiff.Models.AssemblyInfo.cs
+E:\Documents\JoDiff\JoDiff.Models\obj\Debug\net7.0\JoDiff.Models.csproj.CoreCompileInputs.cache
+E:\Documents\JoDiff\JoDiff.Models\obj\Debug\net7.0\JoDiff.Models.dll
+E:\Documents\JoDiff\JoDiff.Models\obj\Debug\net7.0\refint\JoDiff.Models.dll
+E:\Documents\JoDiff\JoDiff.Models\obj\Debug\net7.0\JoDiff.Models.pdb
+E:\Documents\JoDiff\JoDiff.Models\obj\Debug\net7.0\ref\JoDiff.Models.dll
