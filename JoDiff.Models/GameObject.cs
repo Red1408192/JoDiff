@@ -6,13 +6,34 @@ using System.Text.RegularExpressions;
 
 namespace JoDiff.Models
 {
-    public class GameObject : List<KeyValuePair<string, GameObject>>
+    public class GameObject : List<GameObject>
     {
-        public ModelType Type { get; private set; }
-        public int CurrentLevel { get; private set; }
-        public string Keyword { get; private set; }
-        public string Value { get; private set; }
-        public bool HasValue { get; private set; }
+        public GameObject(){ }
+        public GameObject(string keyword)
+        {
+            Keyword = keyword;
+        }
+
+        public ModelType Type { get; set; }
+        public int CurrentLevel { get; set; }
+        public string Keyword { get; set; }
+        public string Value
+        {
+            get => Value;
+            set
+            {
+                this.HasValue = true;
+                this.Type = value switch
+                {
+                    var x when int.TryParse(x, out _) => ModelType.TypeInt,
+                    var x when float.TryParse(x, out _) => ModelType.TypeDec, 
+                    var x when Regex.Match(x, "(?>\")(.*)(?>\")").Success => ModelType.TypeString, 
+                    _ => ModelType.TypeKeyword
+                };
+                this.Value = value;
+            }
+        }
+        public bool HasValue { get; set; }
 
         public static GameObject Parse(string objectName, string path, string text, bool isInFile, int currentLevel, ref int currentIndex)
         {
@@ -39,7 +60,7 @@ namespace JoDiff.Models
                         var match = Regex.Match(innerObjectMatch[innerIndex..], @"(?<Keyword>[\w:._]+)(?=.?\=)");
                         if(!match.Success) break;
                         if(innerIndex == 0) innerIndex = match.Index;
-                        gameObject.Add(new KeyValuePair<string, GameObject>(match.Groups[1].Value, GameObject.Parse(match.Groups[1].Value, path, innerObjectMatch[innerIndex..], true, ++currentLevel, ref innerIndex)));
+                        gameObject.Add(GameObject.Parse(match.Groups[1].Value, path, innerObjectMatch[innerIndex..], true, ++currentLevel, ref innerIndex));
                     }
                     while(innerIndex < innerObjectMatch.Length);
                     currentIndex += tempIndex+1;
@@ -48,14 +69,6 @@ namespace JoDiff.Models
                 else if(valueMatch.Success)
                 {
                     gameObject.Value = valueMatch.Groups[1].Value;
-                    gameObject.HasValue = true;
-                    gameObject.Type = gameObject.Value switch
-                    {
-                        var x when int.TryParse(x, out _) => ModelType.TypeInt,
-                        var x when float.TryParse(x, out _) => ModelType.TypeDec, 
-                        var x when Regex.Match(x, "(?>\")(.*)(?>\")").Success => ModelType.TypeString, 
-                        _ => ModelType.TypeKeyword
-                    };
                     currentIndex += valueMatch.Index + valueMatch.Value.Length;
                     return gameObject;
                 }
@@ -70,7 +83,7 @@ namespace JoDiff.Models
                     gameObject.AddRange(files.Select(x => {
                         var objectName = Regex.Match(x, @"[^\\]+$").Value;
                         var currentIndex = 0;
-                        return new KeyValuePair<string, GameObject>(objectName, GameObject.Parse(objectName, x, null, false, ++currentLevel, ref currentIndex));
+                        return GameObject.Parse(objectName, x, null, false, ++currentLevel, ref currentIndex);
                     }));
                     return gameObject;
                 }
@@ -85,7 +98,7 @@ namespace JoDiff.Models
                         var match = Regex.Match(ParsedStream[fileIndex..], @"(?<Keyword>[\w:._]+)(?=.?\=)");
                         if(!match.Success) break;
                         if(fileIndex == 0) fileIndex = match.Index;
-                        gameObject.Add(new KeyValuePair<string, GameObject>(match.Groups[1].Value, GameObject.Parse(match.Groups[1].Value, path, ParsedStream[fileIndex..], true, ++currentLevel, ref fileIndex)));
+                        gameObject.Add(GameObject.Parse(match.Groups[1].Value, path, ParsedStream[fileIndex..], true, ++currentLevel, ref fileIndex));
                     }
                     while(fileIndex < ParsedStream.Length);
 
