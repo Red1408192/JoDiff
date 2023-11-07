@@ -110,7 +110,7 @@ namespace JoDiff.Models
 
         public override string ToString()
         {
-            var value = HasValue? Value : "{" + Environment.NewLine + string.Join(Environment.NewLine, this.Select(x => x.Value)) + Environment.NewLine + "}";
+            var value = HasValue? Value : "{" + Environment.NewLine + string.Join(Environment.NewLine, this.Select(x => x)) + Environment.NewLine + "}";
             return $"{Keyword} = {value}";
         }
 
