@@ -27,6 +27,10 @@ namespace JoDiff.UnitTests
             file1[0].Keyword.Should().Be("grant_command_to_ruler");
             file1[0][0].Keyword.Should().Be("icon");
             file1[0][0].Value.Should().Be("\"gfx/interface/character_panel/grant_command.dds\"");
+            
+            file1[0][3].Keyword.Should().Be("possible");
+            file1[0][3][0].Keyword.Should().Be("age");
+            file1[0][3][0].Value.Should().Be("define:NCharacters|ADULT_AGE");
 
             var file2 = folder1[1];
 
@@ -34,11 +38,67 @@ namespace JoDiff.UnitTests
             file2[1].Keyword.Should().Be("remove_command_from_ruler");
             file2[1][2].Keyword.Should().Be("potential");
 
-            var comparison = new GameObject("potential")
+            var comparison = new GameObject("potential", new []
             {
-                new GameObject(){ },
-                new GameObject(){ },
-            };
+                new GameObject("is_ruler", "yes"),
+                new GameObject("NOT", new []
+                {
+                    new GameObject("has_role", "general"),
+                }),
+                new GameObject("owner", "scope:actor"),
+            }, 1);
+
+            file1[0][2].ToString().Should().Be(comparison.ToString());
+            Assert.IsTrue(comparison == file1[0][2]);
+
+            var comparison2 = new GameObject("potential", new []
+            {
+                new GameObject("is_ruler", "no"),
+                new GameObject("NOT", new []
+                {
+                    new GameObject("has_role", "general"),
+                }),
+                new GameObject("owner", "scope:actor"),
+            }, 1);
+
+            Assert.IsFalse(comparison2 == file1[0][2]);
+
+            var comparison3 = new GameObject("potential", new []
+            {
+                new GameObject("is_ruler", "yes"),
+                new GameObject("NOT", new []
+                {
+                    new GameObject("has_role", "Liutenant"),
+                }),
+                new GameObject("owner", "scope:actor"),
+            }, 1);
+
+            Assert.IsFalse(comparison3 == file1[0][2]);
+
+            var comparison4 = new GameObject("potential", new []
+            {
+                new GameObject("is_ruler", "yes"),
+                new GameObject("owner", "scope:actor"),
+                new GameObject("NOT", new []
+                {
+                    new GameObject("has_role", "general"),
+                }),
+            }, 1);
+
+            Assert.IsFalse(comparison4 == file1[0][2]);
+
+            var comparison5 = new GameObject("potential", new []
+            {
+                new GameObject("is_ruler", "yes"),
+                new GameObject("NOT", new []
+                {
+                    new GameObject("is_role", "general"),
+                }),
+                new GameObject("owner", "scope:actor"),
+            }, 1);
+
+            file1[0][2].ToString().Should().Be(comparison.ToString());
+            Assert.IsFalse(comparison5 == file1[0][2]);
         }
     }
 }
