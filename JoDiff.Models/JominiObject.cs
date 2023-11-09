@@ -4,25 +4,26 @@ using System.ComponentModel.DataAnnotations;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
+using Microsoft.VisualBasic;
 
 namespace JoDiff.Models
 {
-    public class GameObject : List<GameObject>, IEquatable<GameObject>, IEquatable<string>, IEquatable<int>, IEquatable<float>
+    public class JominiObject : List<JominiObject>, IEquatable<JominiObject>, IEquatable<string>, IEquatable<int>, IEquatable<float>
     {
-        private GameObject(){ }
-        private GameObject(string keyword)
+        private JominiObject(){ }
+        private JominiObject(string keyword)
         {
             Keyword = keyword;
         }
 
-        public GameObject(string keyword, object value, int currentLevel = 0)
+        public JominiObject(string keyword, object value, int currentLevel = 0)
         {
             Keyword = keyword;
             CurrentLevel = currentLevel;
             SetValue(value);
         }
 
-        public GameObject(string keyword, IEnumerable<GameObject> objects, int currentLevel = 0)
+        public JominiObject(string keyword, IEnumerable<JominiObject> objects, int currentLevel = 0)
         {
             Keyword = keyword;
             CurrentLevel = currentLevel;
@@ -42,6 +43,16 @@ namespace JoDiff.Models
         public string Value { get; private set; } //do not ovveride this
         public bool HasValue { get; set; }
 
+        public JominiObject this[string key]
+        {
+            get => this.FirstOrDefault(x => x.Keyword == key);
+        }
+
+        public JominiObject this[string key, int index]
+        {
+            get => this.Where(x => x.Keyword == key).Skip(index).FirstOrDefault();
+        }
+
         public void SetValue(object value) => SetValue(value.ToString());
         public void SetValue(string value)
         {
@@ -58,14 +69,14 @@ namespace JoDiff.Models
             GetHashCode();
         }
 
-        private new void Add(GameObject item)
+        private new void Add(JominiObject item)
         {
             HasValue = false;
             Value = null;
             base.Add(item);
         }
 
-        public new void AddRange(IEnumerable<GameObject> items)
+        public new void AddRange(IEnumerable<JominiObject> items)
         {
             HasValue = false;
             Value = null;
@@ -74,11 +85,11 @@ namespace JoDiff.Models
             GetHashCode();
         }
 
-        public static GameObject Parse(string objectName, string path, string text, bool isInFile, int currentLevel, ref int currentIndex)
+        public static JominiObject Parse(string objectName, string path, string text, bool isInFile, int currentLevel, ref int currentIndex)
         {
             if(currentLevel > 50) throw new Exception("Parsing recursion went too deep");
 
-            var gameObject = new GameObject()
+            var gameObject = new JominiObject()
             {
                 Keyword = objectName,
                 CurrentLevel = currentLevel
@@ -101,7 +112,7 @@ namespace JoDiff.Models
                         var match = Regex.Match(innerObjectMatch[innerIndex..], @"(?<Keyword>[\w:._]+)(?=.?[\\=|\\<|\\>])");
                         if(!match.Success) break;
                         if(innerIndex == 0) innerIndex = match.Index;
-                        gameObject.Add(GameObject.Parse(match.Groups[1].Value, path, innerObjectMatch[innerIndex..], true, currentLevel+1, ref innerIndex));
+                        gameObject.Add(JominiObject.Parse(match.Groups[1].Value, path, innerObjectMatch[innerIndex..], true, currentLevel+1, ref innerIndex));
                     }
                     while(innerIndex < innerObjectMatch.Length);
 
@@ -141,7 +152,7 @@ namespace JoDiff.Models
                     gameObject.AddRange(files.Select(x => {
                         var objectName = Regex.Match(x, @"[^\\]+$").Value;
                         var currentIndex = 0;
-                        return GameObject.Parse(objectName, x, null, false, 0, ref currentIndex);
+                        return JominiObject.Parse(objectName, x, null, false, 0, ref currentIndex);
                     }));
 
                     gameObject.GetHashCode();
@@ -160,11 +171,11 @@ namespace JoDiff.Models
                         if(fileIndex == 0) fileIndex = match.Index;
                         try
                         {
-                            gameObject.Add(GameObject.Parse(match.Groups[1].Value, path, ParsedStream[fileIndex..], true, currentLevel, ref fileIndex));
+                            gameObject.Add(JominiObject.Parse(match.Groups[1].Value, path, ParsedStream[fileIndex..], true, currentLevel, ref fileIndex));
                         }
                         catch (Exception e)
                         {
-                            gameObject.Add(new GameObject("ERRROR: " + e.Message));
+                            gameObject.Add(new JominiObject("ERRROR: " + e.Message));
                         }
                     }
                     while(fileIndex < ParsedStream.Length);
@@ -176,52 +187,59 @@ namespace JoDiff.Models
             }
         }
 
-        public static bool operator ==(GameObject obj1, Object obj2) => obj1.Equals(obj2);
-        public static bool operator !=(GameObject obj1, Object obj2) => !obj1.Equals(obj2);
+        public static bool operator ==(JominiObject obj1, Object obj2) => obj1.Equals(obj2);
+        public static bool operator !=(JominiObject obj1, Object obj2) => !obj1.Equals(obj2);
 
-        // public bool ParseDifference(this GameObject gameObject, GameObject other, out GameObjectDiff diffCandidate, string source = "", List<GameObjectDiff> gameObjectDiffs = null)
-        // {
-        //     if(gameObjectDiffs is null) gameObjectDiffs = new();
-        //     diffCandidate = null;
+        public bool ParseDifference(JominiObject other,string source, out JominiObjectDiff diffCandidate)
+            => ParseDifference(this, other, source, out diffCandidate);
+        public static bool ParseDifference(JominiObject gameObject, JominiObject other, string source, out JominiObjectDiff diffCandidate)
+        {
+            if(gameObject.GetHashCode() == other.GetHashCode())
+            {
+                diffCandidate = null;
+                return false; // no diff
+            }
+            if(gameObject.Keyword != other.Keyword || gameObject.HasValue != other.HasValue)
+            {
+                diffCandidate = new JominiObjectDiff(source, DifferenceType.Full, other.ToString());
+                return true;
+            }
+            if(gameObject.HasValue && other.HasValue)
+            {
+                diffCandidate = new JominiObjectDiff(source, DifferenceType.ValueDifference, other.Value);
+                return true;
+            }
+            var diffCounts = 0;
+            foreach(var param in gameObject)
+            {
+                var index = other.IndexOf(param);
+                if(index is not -1 )
+                {
+                    if(gameObject.IndexOf(param) == index) continue;
+                    else
+                    {
+                        diffCandidate = new JominiObjectDiff(source, DifferenceType.MovedParameter, index.ToString());
+                        continue;
+                    }
+                }
+                else
+                {
+                    var diffsToCompare = other.Select(x => param.ParseDifference(x, source + '.' + other.Keyword, out var candidate))
+                }
+            }
+            if(diffCounts > (gameObject.Count * 0.8))
+            {
+                diffCandidate = new JominiObjectDiff(source, DifferenceType.Full, other.ToString());
+            }
 
-        //     if(gameObject.GetHashCode() == other.GetHashCode()) return false; // no diff
-        //     if(gameObject.HasValue != other.HasValue)
-        //     {
-        //         diffCandidate = new GameObjectDiff(source, DifferenceType.Full, other.ToString());
-        //         return true;
-        //     }
-        //     if(gameObject.HasValue && other.HasValue)
-        //     {
-        //         if(gameObject.Keyword != other.Keyword)
-        //         {
-        //             ///??????
-        //             return true;
-        //         }
-        //         else// if(gameObject.Value != other.Value)
-        //         {
-        //             diffCandidate = new GameObjectDiff(source, DifferenceType.ValueDifference, other.Value);
-        //             return true;
-        //         }
-        //     }
-        //     var diffCounts = 0;
-        //     foreach(var param in this)
-        //     {
-        //         if(other.Contains(param)) continue;
-        //         else diffCounts++;
-        //     }
-        //     if(diffCounts > (this.Count * 0.8))
-        //     {
-        //         diffCandidate = new GameObjectDiff(source, DifferenceType.Full, other.ToString());
-        //     }
 
-
-        //     if(other.Count > this.Count) diffCounts += other.Count - this.Count;
-
-        // }
+            if(other.Count > gameObject.Count) diffCounts += other.Count - gameObject.Count;
+            return true;
+        }
 
         public override bool Equals(Object obj) //this will stop immediatelly after finding the firt difference, the previus function will not
         {
-            if(obj is GameObject other)
+            if(obj is JominiObject other)
             {
                 return this.GetHashCode() == other.GetHashCode();
 
@@ -247,15 +265,23 @@ namespace JoDiff.Models
                 if(Hash.HasValue) return Hash.Value;
                 else
                 {
-                    Hash = Keyword.GetHashCode() ^ Value.GetHashCode();
+                    Hash = HashCode.Combine(Keyword, Value);
                     return Hash.Value;
                 }
             }
             else{
                 if(Hash.HasValue) return Hash.Value;
-                Hash = this.Aggregate(0, (x, y) => (x << 2) ^ y.GetHashCode());
+                Hash = this.Aggregate(0, (x, y) => (x << 2) ^ HashCode.Combine(y.Keyword, y));
                 return Hash.Value;
             }
+        }
+
+
+        private int? _fullCount = null;
+        public int FullCount()
+        {
+            if(_fullCount is null) _fullCount = 1 + this.Sum(x => x.FullCount());
+            return _fullCount.Value;
         }
 
         public override string ToString()
@@ -264,7 +290,7 @@ namespace JoDiff.Models
             return $"{Keyword} {GetOperator()} {value}";
         }
 
-        public bool Equals(GameObject other) => this.Equals(other);
+        public bool Equals(JominiObject other) => this.Equals(other);
 
         public bool Equals(string other) => this.Equals(other);
 
@@ -296,22 +322,25 @@ namespace JoDiff.Models
         public enum ModelType
         {
             TypeObject,
+            TypeParameter,
             TypeString,
             TypeInt,
             TypeDec,
             TypeConditional,
             TypeKeyword,
         }
-        public enum DifferenceType{
+        public enum DifferenceType
+        {
             Full,
+            ObjectDifference,
             ValueDifference,
             MovedParameter,
             AddedParameter,
             RemovedParameter
         }
-        public class GameObjectDiff
+        public class JominiObjectDiff
         {
-            public GameObjectDiff(string location, DifferenceType differenceType, string parameter)
+            public JominiObjectDiff(string location, DifferenceType differenceType, string parameter)
             {
                 Location = location;
                 DifferenceType = differenceType;
@@ -319,6 +348,8 @@ namespace JoDiff.Models
             }
 
             public string Location { get; set; }
+            public int DiffCounts => DifferenceType is not DifferenceType.ObjectDifference? 1 : InnerDiffs.Sum(x => x.DiffCounts);
+            public List<JominiObjectDiff> InnerDiffs { get; set; } = new List<JominiObjectDiff>();
             public DifferenceType DifferenceType { get; set; }
             public string Parameter { get; set; }
         }

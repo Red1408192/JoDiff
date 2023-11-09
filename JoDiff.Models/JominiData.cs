@@ -5,9 +5,9 @@ using System.Linq;
 
 namespace JoDiff.Models
 {
-    public class GameData
+    public class JominiData
     {
-        private GameData(GameEnum gameId, string baseGamePath)
+        private JominiData(GameEnum gameId, string baseGamePath)
         {
             GameId = gameId;
             BaseGamePath = baseGamePath;
@@ -16,9 +16,9 @@ namespace JoDiff.Models
 
         public GameEnum GameId { get; private set; }
         public string BaseGamePath { get; private set; }
-        public GameObject GameObject { get; private set; }
+        public JominiObject GameObject { get; private set; }
 
-        private GameObject ParseGameFolder(string baseGamePath)
+        private JominiObject ParseGameFolder(string baseGamePath)
         {
             var baseDirectoryFiles = Directory.EnumerateFileSystemEntries(baseGamePath);
             if(!baseDirectoryFiles.Any(x => x.EndsWith(JoDiffCostants.Folders.GameFolder))) throw new InvalidDataException("Invalid Game Folder");
@@ -30,17 +30,17 @@ namespace JoDiff.Models
                 else
                 {
                     var index = 0;
-                    GameObject = GameObject.Parse(JoDiffCostants.Folders.CommonFolder, Path.Combine(gameDir, JoDiffCostants.Folders.CommonFolder), null, false, 0, ref index);
+                    GameObject = JominiObject.Parse(JoDiffCostants.Folders.CommonFolder, Path.Combine(gameDir, JoDiffCostants.Folders.CommonFolder), null, false, 0, ref index);
                 }
             }
 
             return GameObject;
         }
 
-        public static GameData GetGameData(GameEnum gameId, string baseGamePath)
+        public static JominiData GetJominiData(GameEnum gameId, string baseGamePath)
         {
             //logic
-            return new GameData(gameId, baseGamePath);
+            return new JominiData(gameId, baseGamePath);
         }
     }
 }

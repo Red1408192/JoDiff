@@ -96,7 +96,7 @@ remove_command_from_ruler = {
 
 grant_leadership_to_agitator = {
 	icon = "gfx/interface/character_panel/grant_command_not.dds"
-	clicksound = "event:/SFX/DLC/1.3_ip1/UI/agitator_promote"
+	clicksound = "event:/SFX/DLC/1.3_ip1/UI/agitator_promote2"
 
 	potential = {
 		has_dlc_feature = agitators
@@ -136,12 +136,6 @@ grant_leadership_to_agitator = {
 		}
 		if = {
 			limit = {
-				interest_group.leader.popularity <= -50
-			}
-			add = 50
-		}
-		if = {
-			limit = {
 				interest_group.leader.popularity >= 50
 			}
 			add = -50
@@ -149,7 +143,7 @@ grant_leadership_to_agitator = {
 		if = {
 			limit = {
 				interest_group = {
-					ig_approval <= 0
+					ig_approval <= 10
 				}
 			}
 			add = 25
