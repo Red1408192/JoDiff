@@ -15,7 +15,7 @@ namespace JoDiff.UnitTests
             var ob1 = daGameData.GameObject[0][1]["grant_leadership_to_agitator"];
             var ob2 = daGameData.GameObject[1][0]["grant_leadership_to_agitator"];
             
-            var result = ob1.ParseDifference(ob2);
+            var result = ob1.ParseDifference(ob2, ob2.Keyword);
         }
         [TestMethod] //will divide in different functions later...
         public void TryParse()
