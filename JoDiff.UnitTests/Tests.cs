@@ -2,6 +2,7 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using JoDiff.Models;
 using FluentAssertions;
+using System;
 
 namespace JoDiff.UnitTests
 {
@@ -16,6 +17,11 @@ namespace JoDiff.UnitTests
             var ob2 = daGameData.GameObject[1][0]["grant_leadership_to_agitator"];
             
             var result = ob1.ParseDifference(ob2, ob2.Keyword);
+
+            foreach (var item in result.OutputJoDiffInstructions())
+            {
+                Console.WriteLine(item);
+            }
         }
         [TestMethod] //will divide in different functions later...
         public void TryParse()

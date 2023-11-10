@@ -10,6 +10,8 @@ namespace JoDiff.Models
 {
     public class JominiObject : List<JominiObject>, IEquatable<JominiObject>, IEquatable<string>, IEquatable<int>, IEquatable<float>
     {
+        private static string[] conditionals = {"if", "not", "nor", "else", "else_if"};
+
         private JominiObject(){ }
         private JominiObject(string keyword)
         {
@@ -42,6 +44,7 @@ namespace JoDiff.Models
         public string Keyword { get; set; }
         public string Value { get; private set; } //do not ovveride this
         public bool HasValue { get; set; }
+        public int Index { get; private set; }
 
         public JominiObject this[string key]
         {
@@ -85,14 +88,16 @@ namespace JoDiff.Models
             GetHashCode();
         }
 
-        public static JominiObject Parse(string objectName, string path, string text, bool isInFile, int currentLevel, ref int currentIndex)
+        public static JominiObject Parse(string objectName, string path, string text, bool isInFile, int currentLevel, ref int currentIndex, bool isConditional = false, int conditionalIndex = -1)
         {
             if(currentLevel > 50) throw new Exception("Parsing recursion went too deep");
 
             var jominiObject = new JominiObject()
             {
                 Keyword = objectName,
-                CurrentLevel = currentLevel
+                CurrentLevel = currentLevel,
+                Type = isConditional? ModelType.TypeConditional : ModelType.TypeObject,
+                Index = conditionalIndex
             };
 
 
@@ -107,12 +112,23 @@ namespace JoDiff.Models
                     var tempIndex = 0;
                     var innerObjectMatch = text.GetNextValueBetweenBrackets(out tempIndex);
                     var innerIndex = 0;
+                    var objIndex = 0;
                     do
                     {
                         var match = Regex.Match(innerObjectMatch[innerIndex..], @"(?<Keyword>[\w:._]+)(?=.?[\\=|\\<|\\>])");
                         if(!match.Success) break;
                         if(innerIndex == 0) innerIndex = match.Index;
-                        jominiObject.Add(JominiObject.Parse(match.Groups[1].Value, path, innerObjectMatch[innerIndex..], true, currentLevel+1, ref innerIndex));
+
+                        var objName = match.Groups[1].Value;
+                        var conditional = false;
+                        if(conditionals.Contains(objName))
+                        {
+                            objName += $"[{objIndex}]";
+                            objIndex++;
+                            conditional = true;
+                        }
+
+                        jominiObject.Add(JominiObject.Parse(objName, path, innerObjectMatch[innerIndex..], true, currentLevel+1, ref innerIndex, conditional, conditional? objIndex : -1));
                     }
                     while(innerIndex < innerObjectMatch.Length);
 
@@ -213,7 +229,7 @@ namespace JoDiff.Models
                     return new JominiObjectDiff(source + '.' + jominiObject.Keyword, DifferenceType.ValueDifference, other.Value, jominiObject, other);
                 }
             }
-            var diffCandidate = new JominiObjectDiff(source + '.' + jominiObject.Keyword, DifferenceType.ObjectDifference, other.ToString(), jominiObject, other);
+            var diffCandidate = new JominiObjectDiff(source, DifferenceType.ObjectDifference, other.ToString(), jominiObject, other);
             
             var sourceObjCopy = jominiObject.Select(x => x).ToList();
             var targetObjCopy = other.Select(x => x).ToList();
@@ -221,7 +237,7 @@ namespace JoDiff.Models
             foreach(var param in jominiObject)
             {
                 var index = other.IndexOf(param);
-                if(index is not -1 )
+                if(index is not -1)
                 {
                     var toIndex = jominiObject.IndexOf(param);
                     // if(toIndex != index) //LATER PLEASE
@@ -395,6 +411,23 @@ namespace JoDiff.Models
             public int Differences { get; set; }
 
             public float Likeness => 1f - (float)Differences / (float)From.FullCount();
+
+
+            public IEnumerable<string> OutputJoDiffInstructions()
+            {
+                if(!InnerDiffs.Any()) return DifferenceType switch
+                {
+                    DifferenceType.Full => new [] { Location + " = " + Parameter },
+                    DifferenceType.ValueDifference => new [] { Location + " = "  + Parameter },
+                    DifferenceType.OperatorDifference => new [] { Location + " "  + Parameter },
+                    DifferenceType.RemovedParameter => new [] { Location + " -= "  + Parameter },
+                    DifferenceType.AddedParameter => new [] { Location + " += "  + Parameter },
+                    DifferenceType.ObjectDifference => new [] { Location + " = {"  + Parameter + " }" },
+                    _ => new[] { "" }
+                };
+
+                return InnerDiffs.SelectMany(x => x.OutputJoDiffInstructions());
+            }
         }
     }
 }
