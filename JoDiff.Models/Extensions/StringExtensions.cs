@@ -11,7 +11,7 @@ namespace System
         /// </summary>
         /// <param name="input"></param>
         /// <returns></returns>
-        public static string RemoveComment(this string input) => Regex.Replace(input.ReplaceLineEndings(), @"\#.*(?=\r\n)", "", RegexOptions.Multiline);
+        public static string RemoveComment(this string input) => Regex.Replace(input.ReplaceLineEndings(), @"\#.*", "", RegexOptions.Multiline);
         public static string RemoveMultipleWhiteSpacesAndReturns(this string input) => Regex.Replace(input.ReplaceLineEndings(), @$"\s\s+", " ");
         public static string GetNextValueBetweenBrackets(this string input, out int last)
         {

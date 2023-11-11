@@ -166,7 +166,7 @@ namespace JoDiff.Models
                 {
                     var files = Directory.EnumerateFileSystemEntries(path);
                     jominiObject.AddRange(files.Select(x => {
-                        var objectName = Regex.Match(x, @"[^\\]+$").Value;
+                        var objectName = Regex.Match(x, @"[^\\|^\/]+$").Value;
                         var currentIndex = 0;
                         return JominiObject.Parse(objectName, x, null, false, 0, ref currentIndex);
                     }));

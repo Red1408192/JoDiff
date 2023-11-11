@@ -27,7 +27,7 @@ namespace JoDiff.UnitTests
             a noi piacerebbe che questa stringa non possieda commenti 
             
             pur mantendendo i returnCariage
-            è molto importante controllare che la stringa abbia i cariageReturn normalizzati");
+            è molto importante controllare che la stringa abbia i cariageReturn normalizzati".ReplaceLineEndings());
         }
 
         [TestMethod]
