@@ -44,7 +44,7 @@ namespace JoDiff.Models
         public string Keyword { get; set; }
         public string Value { get; private set; } //do not ovveride this
         public bool HasValue { get; set; }
-        public int Index { get; private set; }
+        public int? Index { get; private set; }
 
         public JominiObject this[string key]
         {
@@ -53,7 +53,7 @@ namespace JoDiff.Models
 
         public JominiObject this[string key, int index]
         {
-            get => this.Where(x => x.Keyword == key).Skip(index).FirstOrDefault();
+            get => this.Where(x => x.Keyword == key && x.Index == index).FirstOrDefault();
         }
 
         public void SetValue(object value) => SetValue(value.ToString());
@@ -88,7 +88,7 @@ namespace JoDiff.Models
             GetHashCode();
         }
 
-        public static JominiObject Parse(string objectName, string path, string text, bool isInFile, int currentLevel, ref int currentIndex, bool isConditional = false, int conditionalIndex = -1)
+        public static JominiObject Parse(string objectName, string path, string text, bool isInFile, int currentLevel, ref int currentIndex, bool isConditional = false, int? conditionalIndex = null)
         {
             if(currentLevel > 50) throw new Exception("Parsing recursion went too deep");
 
@@ -121,14 +121,9 @@ namespace JoDiff.Models
 
                         var objName = match.Groups[1].Value;
                         var conditional = false;
-                        if(conditionals.Contains(objName))
-                        {
-                            objName += $"[{objIndex}]";
-                            objIndex++;
-                            conditional = true;
-                        }
+                        if(conditionals.Contains(objName)) conditional = true;
 
-                        jominiObject.Add(JominiObject.Parse(objName, path, innerObjectMatch[innerIndex..], true, currentLevel+1, ref innerIndex, conditional, conditional? objIndex : -1));
+                        jominiObject.Add(JominiObject.Parse(objName, path, innerObjectMatch[innerIndex..], true, currentLevel+1, ref innerIndex, conditional, objIndex++));
                     }
                     while(innerIndex < innerObjectMatch.Length);
 
@@ -216,20 +211,20 @@ namespace JoDiff.Models
             }
             if(jominiObject.Keyword != other.Keyword || jominiObject.HasValue != other.HasValue)
             {
-                return new JominiObjectDiff(source + '.' + jominiObject.Keyword, DifferenceType.Full, other.ToString(), jominiObject, other, jominiObject.FullCount() + 2);
+                return new JominiObjectDiff(source + '.' + jominiObject.GetDetailedKeyword(), DifferenceType.Full, other.ToString(), jominiObject, other, jominiObject.FullCount() + other.FullCount());
             }
             if(jominiObject.HasValue && other.HasValue)
             {
                 if(jominiObject.OperatorType != other.OperatorType)
                 {
-                    return new JominiObjectDiff(source + '.' + jominiObject.Keyword, DifferenceType.OperatorDifference, other.GetOperator() + " " + other.Value, jominiObject, other, 2);
+                    return new JominiObjectDiff(source + '.' + jominiObject.GetDetailedKeyword(), DifferenceType.OperatorDifference, other.GetOperator() + " " + other.Value, jominiObject, other, 2);
                 }
                 else
                 {
-                    return new JominiObjectDiff(source + '.' + jominiObject.Keyword, DifferenceType.ValueDifference, other.Value, jominiObject, other);
+                    return new JominiObjectDiff(source, DifferenceType.ValueDifference, other.Value, jominiObject, other, 1);
                 }
             }
-            var diffCandidate = new JominiObjectDiff(source, DifferenceType.ObjectDifference, other.ToString(), jominiObject, other);
+            var diffCandidate = new JominiObjectDiff(source, DifferenceType.ObjectDifference, other.ToString(), jominiObject, other, jominiObject.FullCount());
             
             var sourceObjCopy = jominiObject.Select(x => x).ToList();
             var targetObjCopy = other.Select(x => x).ToList();
@@ -247,6 +242,7 @@ namespace JoDiff.Models
                     // }
                     sourceObjCopy.Remove(param);
                     targetObjCopy.Remove(param);
+                    diffCandidate.Differences -= 1;
                 }
             }
             if(!sourceObjCopy.Any() && !targetObjCopy.Any()) return diffCandidate;
@@ -257,7 +253,7 @@ namespace JoDiff.Models
                 compatibilityMatrix[i] = new JominiObjectDiff[targetObjCopy.Count];
                 for (int j = 0; j < targetObjCopy.Count; j++)
                 {
-                    compatibilityMatrix[i][j] = sourceObjCopy[i].ParseDifference(targetObjCopy[j], source + '.' + sourceObjCopy[i].Keyword);
+                    compatibilityMatrix[i][j] = sourceObjCopy[i].ParseDifference(targetObjCopy[j], source + '.' + sourceObjCopy[i].GetDetailedKeyword());
                 }
             }
 
@@ -271,9 +267,11 @@ namespace JoDiff.Models
                 while (candidates.MoveNext())
                 {
                     var best = candidates.Current;
-                    if(best.DifferenceType is DifferenceType.Full || (best.Differences > 2 && best.Likeness < 0.6f)) break;
+                    if(best.DifferenceType is DifferenceType.Full) break; //|| (best.Differences > 2 && best.Likeness < 0.4f)
 
                     var otherTarget = targetObjCopy.IndexOf(best.To);
+                    if(otherTarget == -1) continue;
+
                     var otherCandidates = compatibilityMatrix.Select(x => x[otherTarget]);
 
                     if(otherCandidates.MaxBy(x => x.Likeness).Likeness > best.Likeness) continue;
@@ -289,8 +287,10 @@ namespace JoDiff.Models
 
             if(!sourceObjCopy.Any() && !targetObjCopy.Any()) return diffCandidate;
 
-            diffCandidate.InnerDiffs.AddRange(sourceObjCopy.Select((x, y) => new JominiObjectDiff(source + '.' + jominiObject.Keyword+ '.' + x.Keyword, DifferenceType.RemovedParameter, $"[{y}]", x, null, x.FullCount())));
-            diffCandidate.InnerDiffs.AddRange(targetObjCopy.Select((x, y) => new JominiObjectDiff(source + '.' + other.Keyword + '.' + x.Keyword, DifferenceType.AddedParameter, x.ToString(), null, x, x.FullCount())));
+            diffCandidate.InnerDiffs.AddRange(sourceObjCopy.Select(x => new JominiObjectDiff(source + '.' + jominiObject.Keyword, DifferenceType.RemovedParameter, $"[{jominiObject.IndexOf(x)}]", x, null, x.FullCount()+1)));
+            diffCandidate.InnerDiffs.AddRange(targetObjCopy.Select(x => new JominiObjectDiff(source + '.' + other.Keyword, DifferenceType.AddedParameter, x.ToString(), null, x, x.FullCount()+1)));
+            
+            diffCandidate.Differences = diffCandidate.InnerDiffs.Sum(x => x.Differences);
             return diffCandidate;
         }
 
@@ -335,8 +335,12 @@ namespace JoDiff.Models
             return _fullCount.Value;
         }
 
+
+        public string GetDetailedKeyword() => Type is ModelType.TypeConditional? Keyword + $"[{Index}]" : Keyword;
         public override string ToString()
         {
+            //var keyword = Index != null? Keyword + $"[{Index}]" : Keyword;
+
             var value = HasValue? Value : "{" + Environment.NewLine + new string('\t', Math.Max(CurrentLevel, 0)) + string.Join(Environment.NewLine + new string('\t', CurrentLevel), this.Select(x => x)) + Environment.NewLine + new string('\t', Math.Max(CurrentLevel-1, 0)) +"}";
             return $"{Keyword} {GetOperator()} {value}";
         }
@@ -392,25 +396,41 @@ namespace JoDiff.Models
         }
         public class JominiObjectDiff
         {
-            public JominiObjectDiff(string location, DifferenceType differenceType, string parameter, JominiObject from, JominiObject to, int differeces = 1)
+            public JominiObjectDiff(string location, DifferenceType differenceType, string parameter, JominiObject from, JominiObject to, int diffs = 1)
             {
                 From = from;
                 To = to;
                 Location = location;
                 DifferenceType = differenceType;
                 Parameter = parameter;
-                Differences = differeces;
+                Differences = diffs;
             }
-
+        
             public JominiObject From { get; set; }
             public JominiObject To { get; set; }
             public string Location { get; set; }
             public List<JominiObjectDiff> InnerDiffs { get; set; } = new List<JominiObjectDiff>();
             public DifferenceType DifferenceType { get; set; }
             public string Parameter { get; set; }
-            public int Differences { get; set; }
+            public int Differences {get; set;}
+            // {
+            //     get
+            //     {
+            //         return DifferenceType switch
+            //         {
+            //             DifferenceType.MovedParameter or
+            //             DifferenceType.ValueDifference => 1,
+            //             DifferenceType.OperatorDifference => 2,
+            //             DifferenceType.RemovedParameter => From.FullCount(),
+            //             DifferenceType.AddedParameter => To.FullCount(),
+            //             DifferenceType.Full => From.FullCount() + To.FullCount(),
+            //             DifferenceType.ObjectDifference => InnerDiffs.Select(x => x.Differences).Sum(),
+            //             _ => 0
+            //         };
+            //     }
+            // }
 
-            public float Likeness => 1f - (float)Differences / (float)From.FullCount();
+            public float Likeness => 1f - (float)Differences / (DifferenceType is DifferenceType.Full? From?.FullCount()??1 + To?.FullCount()??1 : (float)Math.Max(From?.FullCount()??1, To?.FullCount()??1));
 
 
             public IEnumerable<string> OutputJoDiffInstructions()

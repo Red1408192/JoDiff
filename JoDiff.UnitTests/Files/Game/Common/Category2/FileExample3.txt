@@ -152,6 +152,12 @@ grant_leadership_to_agitator = {
 			limit = {
 				this.ideology = owner.ruler.ideology
 			}
+			add = 40
+		}
+		if = {
+			limit = {
+				this.leader = ideology::Communist
+			}
 			add = 50
 		}
 	}

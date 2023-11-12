@@ -143,7 +143,7 @@ grant_leadership_to_agitator = {
 			set_as_interest_group_leader = yes
 		}
 	}
-
+	
 	cooldown = { months = normal_modifier_time }
 
 	ai_chance = {
