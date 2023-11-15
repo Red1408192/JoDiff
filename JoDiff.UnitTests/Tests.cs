@@ -22,6 +22,8 @@ namespace JoDiff.UnitTests
             foreach (var item in result.OutputJoDiffInstructions())
             {
                 Console.WriteLine(item);
+
+                
             }
         }
         [TestMethod] //will divide in different functions later...

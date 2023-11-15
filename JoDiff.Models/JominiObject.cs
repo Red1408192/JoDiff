@@ -94,7 +94,7 @@ namespace JoDiff.Models
 
             var jominiObject = new JominiObject()
             {
-                Keyword = objectName,
+                Keyword = objectName.Contains('.')? $"'{objectName}'" : objectName,
                 CurrentLevel = currentLevel,
                 Type = isConditional? ModelType.TypeConditional : ModelType.TypeObject,
                 Index = conditionalIndex
@@ -267,7 +267,7 @@ namespace JoDiff.Models
                 while (candidates.MoveNext())
                 {
                     var best = candidates.Current;
-                    if(best.DifferenceType is DifferenceType.Full) break; //|| (best.Differences > 2 && best.Likeness < 0.4f)
+                    //if(best.DifferenceType is DifferenceType.Full) break; //|| (best.Differences > 2 && best.Likeness < 0.4f)
 
                     var otherTarget = targetObjCopy.IndexOf(best.To);
                     if(otherTarget == -1) continue;
@@ -287,8 +287,8 @@ namespace JoDiff.Models
 
             if(!sourceObjCopy.Any() && !targetObjCopy.Any()) return diffCandidate;
 
-            diffCandidate.InnerDiffs.AddRange(sourceObjCopy.Select(x => new JominiObjectDiff(source + '.' + jominiObject.Keyword, DifferenceType.RemovedParameter, $"[{jominiObject.IndexOf(x)}]", x, null, x.FullCount()+1)));
-            diffCandidate.InnerDiffs.AddRange(targetObjCopy.Select(x => new JominiObjectDiff(source + '.' + other.Keyword, DifferenceType.AddedParameter, x.ToString(), null, x, x.FullCount()+1)));
+            diffCandidate.InnerDiffs.AddRange(sourceObjCopy.Select(x => new JominiObjectDiff(source + '.' + jominiObject.Keyword, DifferenceType.RemovedParameter, $"[{jominiObject.IndexOf(x)}]", x, null, x.FullCount())));
+            diffCandidate.InnerDiffs.AddRange(targetObjCopy.Select(x => new JominiObjectDiff(source + '.' + other.Keyword, DifferenceType.AddedParameter, x.ToString(), null, x, x.FullCount())));
             
             diffCandidate.Differences = diffCandidate.InnerDiffs.Sum(x => x.Differences);
             return diffCandidate;
@@ -432,17 +432,16 @@ namespace JoDiff.Models
 
             public float Likeness => 1f - (float)Differences / (DifferenceType is DifferenceType.Full? From?.FullCount()??1 + To?.FullCount()??1 : (float)Math.Max(From?.FullCount()??1, To?.FullCount()??1));
 
-
             public IEnumerable<string> OutputJoDiffInstructions()
             {
                 if(!InnerDiffs.Any()) return DifferenceType switch
                 {
-                    DifferenceType.Full => new [] { Location + " = " + Parameter },
+                    DifferenceType.Full => new [] { Regex.Replace(Location, $"{From.Keyword}^", $"[{From.Index}]") + " << " + Parameter },
                     DifferenceType.ValueDifference => new [] { Location + " = "  + Parameter },
                     DifferenceType.OperatorDifference => new [] { Location + " "  + Parameter },
                     DifferenceType.RemovedParameter => new [] { Location + " -= "  + Parameter },
                     DifferenceType.AddedParameter => new [] { Location + " += "  + Parameter },
-                    DifferenceType.ObjectDifference => new [] { Location + " = {"  + Parameter + " }" },
+                    DifferenceType.ObjectDifference => new [] { Regex.Replace(Location, $"{From.Keyword}^", "") + " = {"  + Parameter + " }" },
                     _ => new[] { "" }
                 };
 
